@@ -109,13 +109,13 @@ All source code lives under `Cappy/` at repository root (single Xcode project). 
 
 ### Implementation for User Story 4
 
-- [ ] T024 [US4] Create AnnotationService with annotations array, addAnnotation, removeAnnotation, updateAnnotation, undo/redo with capped stacks (20 entries), and commitToImage (render to CGImage) in Cappy/Services/AnnotationService.swift
-- [ ] T025 [US4] Create AnnotationCanvas using SwiftUI Canvas + GraphicsContext: render ArrowShape, Rectangle, Ellipse, and Text annotations from AnnotationService state in Cappy/Views/Annotation/AnnotationCanvas.swift
-- [ ] T026 [US4] Create AnnotationToolbar with tool selector (arrow, rectangle, circle, text) and color palette picker (red, yellow, blue, green, white, black) in Cappy/Views/Annotation/AnnotationToolbar.swift
-- [ ] T027 [US4] Create AnnotationEditor as a resizable SwiftUI Window scene displaying the capture image with overlaid AnnotationCanvas and AnnotationToolbar in Cappy/Views/Annotation/AnnotationEditor.swift
-- [ ] T028 [US4] Add Cmd+Z / Cmd+Shift+Z keyboard shortcuts for undo/redo within AnnotationEditor
-- [ ] T029 [US4] Implement save flow: AnnotationService.commitToImage() → FileService.overwrite(capture.fileURL) on Cmd+S or editor close in Cappy/Views/Annotation/AnnotationEditor.swift
-- [ ] T030 [US4] Wire ThumbnailView click → open AnnotationEditor window with the captured image; handle Dock icon show/hide via NSApp.setActivationPolicy in CappyApp.swift
+- [x] T024 [US4] Create AnnotationService with annotations array, addAnnotation, removeAnnotation, updateAnnotation, undo/redo with capped stacks (20 entries), and commitToImage (render to CGImage) in Cappy/Services/AnnotationService.swift
+- [x] T025 [US4] Create AnnotationCanvas using SwiftUI Canvas + GraphicsContext: render ArrowShape, Rectangle, Ellipse, and Text annotations from AnnotationService state in Cappy/Views/Annotation/AnnotationCanvas.swift
+- [x] T026 [US4] Create AnnotationToolbar with tool selector (arrow, rectangle, circle, text) and color palette picker (red, yellow, blue, green, white, black) in Cappy/Views/Annotation/AnnotationToolbar.swift
+- [x] T027 [US4] Create AnnotationEditor as a resizable SwiftUI Window scene displaying the capture image with overlaid AnnotationCanvas and AnnotationToolbar in Cappy/Views/Annotation/AnnotationEditor.swift
+- [x] T028 [US4] Add Cmd+Z / Cmd+Shift+Z keyboard shortcuts for undo/redo within AnnotationEditor
+- [x] T029 [US4] Implement save flow: AnnotationService.commitToImage() → FileService.overwrite(capture.fileURL) on Cmd+S or editor close in Cappy/Views/Annotation/AnnotationEditor.swift
+- [x] T030 [US4] Wire ThumbnailView click → open AnnotationEditor window with the captured image; handle Dock icon show/hide via NSApp.setActivationPolicy in CappyApp.swift
 
 **Checkpoint**: Annotation editor works. User can draw arrows, rectangles, circles, text; undo/redo; save annotated images.
 

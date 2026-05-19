@@ -20,24 +20,18 @@ struct CappyApp: App {
                 .keyboardShortcut("q", modifiers: [.command])
         }
 
-        WindowGroup("Thumbnail", id: "thumbnail") {
-            if let image = appState.thumbnailImage {
-                ThumbnailView(
-                    image: image,
-                    onClick: { appState.openAnnotationEditor() },
-                    onDismiss: { appState.dismissThumbnail() }
-                )
-                .frame(width: 200, height: 160)
-            }
-        }
+        WindowGroup("Thumbnail", id: "thumbnail") {}  // unused — thumbnail is NSWindow-based
     }
 }
 
 @MainActor
 final class AppState: ObservableObject {
     @Published var thumbnailImage: CGImage?
+    private var lastCaptureImage: CGImage?
+    private var lastCaptureURL: URL?
     private var dimOverlay: DimOverlay?
     private var globalMonitor: Any?
+    private var editorWindow: NSWindow?
 
     init() {
         registerGlobalShortcuts()
@@ -93,13 +87,17 @@ final class AppState: ObservableObject {
             do {
                 let fileURL = try FileService.savePNG(image: cgImage, filename: filename)
                 print("[Cappy] Saved: \(fileURL.path)")
+                if index == 0 {
+                    lastCaptureURL = fileURL
+                    lastCaptureImage = cgImage
+                }
             } catch {
                 print("[Cappy] Save failed (\(suffix)): \(error.localizedDescription)")
             }
         }
 
         if let firstImage {
-            thumbnailImage = firstImage
+            showThumbnail(cgImage: firstImage)
         } else if captureCount == 0 {
             DispatchQueue.main.async {
                 let alert = NSAlert()
@@ -114,7 +112,6 @@ final class AppState: ObservableObject {
         let screen = currentScreen
         dimOverlay = DimOverlay()
         dimOverlay?.showForWindow(on: screen) { _ in
-            // Region callback not used in window mode
         } onWindowPicked: { [weak self] windowID in
             guard let self, let windowID else { return }
             self.captureWindow(windowID: windowID)
@@ -155,18 +152,89 @@ final class AppState: ObservableObject {
         do {
             let fileURL = try FileService.savePNG(image: cgImage, filename: filename)
             print("[Cappy] Saved: \(fileURL.path)")
+            lastCaptureURL = fileURL
+            lastCaptureImage = cgImage
         } catch {
             print("[Cappy] Save failed: \(error.localizedDescription)")
         }
-        thumbnailImage = cgImage
+        showThumbnail(cgImage: cgImage)
+    }
+
+    private var thumbnailWindow: NSWindow?
+
+    private func showThumbnail(cgImage: CGImage) {
+        thumbnailWindow?.close()
+
+        let thumbView = ThumbnailView(
+            image: cgImage,
+            onClick: { [weak self] in self?.openAnnotationEditor() },
+            onDismiss: { [weak self] in self?.thumbnailWindow?.close() }
+        )
+        .frame(width: 200, height: 160)
+
+        let hostingView = NSHostingView(rootView: thumbView)
+        hostingView.frame = NSRect(x: 0, y: 0, width: 200, height: 160)
+
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 200, height: 160),
+            styleMask: .borderless,
+            backing: .buffered,
+            defer: false
+        )
+        window.level = .floating
+        window.isOpaque = false
+        window.backgroundColor = .clear
+        window.contentView = hostingView
+        window.collectionBehavior = [.canJoinAllSpaces, .stationary]
+
+        guard let screen = NSScreen.main else { return }
+        let screenFrame = screen.visibleFrame
+        let origin = NSPoint(
+            x: screenFrame.maxX - 220,
+            y: screenFrame.minY + 20
+        )
+        window.setFrameOrigin(origin)
+        window.makeKeyAndOrderFront(nil)
+
+        thumbnailWindow = window
     }
 
     func dismissThumbnail() {
+        thumbnailWindow?.close()
+        thumbnailWindow = nil
         thumbnailImage = nil
     }
 
     func openAnnotationEditor() {
-        print("[Cappy] Annotation editor placeholder")
+        guard let image = lastCaptureImage, let fileURL = lastCaptureURL else { return }
+
+        let contentView = AnnotationEditor(
+            image: image,
+            fileURL: fileURL,
+            onClose: { [weak self] in
+                self?.editorWindow = nil
+            }
+        )
+        .frame(minWidth: 600, minHeight: 400)
+
+        let hostingView = NSHostingView(rootView: contentView)
+        hostingView.frame = NSRect(x: 0, y: 0, width: 800, height: 600)
+
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 800, height: 600),
+            styleMask: [.titled, .closable, .resizable, .miniaturizable],
+            backing: .buffered,
+            defer: false
+        )
+        window.title = "Cappy — Annotation Editor"
+        window.contentView = hostingView
+        window.center()
+        window.makeKeyAndOrderFront(nil)
+
+        NSApp.setActivationPolicy(.regular)
+        NSApp.activate(ignoringOtherApps: true)
+
+        editorWindow = window
     }
 
     func openScreenshotsFolder() {
@@ -186,9 +254,9 @@ final class AppState: ObservableObject {
             return
         }
         switch event.keyCode {
-        case 23: startRegionCapture()  // 5
-        case 22: startFullScreenCapture()  // 6
-        case 26: startWindowCapture()  // 7
+        case 23: startRegionCapture()
+        case 22: startFullScreenCapture()
+        case 26: startWindowCapture()
         default: break
         }
     }

@@ -1,5 +1,6 @@
 import Foundation
 import CoreGraphics
+import AppKit
 
 enum AnnotationType: CaseIterable {
     case arrow
@@ -26,15 +27,20 @@ enum AnnotationColor: String, CaseIterable {
         case .black:  return CGColor(red: 0, green: 0, blue: 0, alpha: 1)
         }
     }
+
+    var nsColor: NSColor {
+        NSColor(cgColor: cgColor) ?? .red
+    }
 }
 
 struct Annotation: Identifiable {
-    let id = UUID()
+    var id = UUID()
     var type: AnnotationType
     var origin: CGPoint
     var size: CGSize
     var endPoint: CGPoint?
     var color: AnnotationColor = .red
+    var lineWidth: CGFloat = 3
     var text: String?
     var zIndex: Int = 0
 
@@ -46,6 +52,30 @@ struct Annotation: Identifiable {
             return text?.isEmpty == false
         case .arrow:
             return endPoint != nil
+        }
+    }
+
+    func boundsRect() -> CGRect {
+        switch type {
+        case .rectangle, .circle:
+            return CGRect(origin: origin, size: size)
+        case .arrow:
+            guard let end = endPoint else { return .zero }
+            let mx = min(origin.x, end.x)
+            let my = min(origin.y, end.y)
+            return CGRect(x: mx, y: my, width: abs(end.x - origin.x), height: abs(end.y - origin.y))
+        case .text:
+            return CGRect(origin: origin, size: CGSize(width: 100, height: 30))
+        }
+    }
+
+    mutating func move(by delta: CGPoint) {
+        origin.x += delta.x
+        origin.y += delta.y
+        if var ep = endPoint {
+            ep.x += delta.x
+            ep.y += delta.y
+            endPoint = ep
         }
     }
 }
