@@ -74,10 +74,10 @@ All source code lives under `Cappy/` at repository root (single Xcode project). 
 
 ### Implementation for User Story 2
 
-- [ ] T015 [US2] Add fullScreen capture method using CGDisplayCreateImage per display in Cappy/Services/CaptureService.swift
-- [ ] T016 [US2] Handle multi-display: iterate `NSScreen.screens`, capture each, generate display-suffixed filenames (`_Display2.png`) in Cappy/Services/CaptureService.swift
-- [ ] T017 [US2] Register global keyboard shortcut for full-screen capture (Cmd+Shift+6 fallback) in CappyApp.swift
-- [ ] T018 [US2] Wire full-screen capture pipeline: shortcut → CaptureService.fullScreen() → FileService.save() per display → ThumbnailView.show() in CappyApp.swift
+- [x] T015 [US2] Add fullScreen capture method using CGDisplayCreateImage per display in Cappy/Services/CaptureService.swift
+- [x] T016 [US2] Handle multi-display: iterate `NSScreen.screens`, capture each, generate display-suffixed filenames (`_Display2.png`) in Cappy/Services/CaptureService.swift
+- [x] T017 [US2] Register global keyboard shortcut for full-screen capture (Cmd+Shift+6 fallback) in CappyApp.swift
+- [x] T018 [US2] Wire full-screen capture pipeline: shortcut → CaptureService.fullScreen() → FileService.save() per display → ThumbnailView.show() in CappyApp.swift
 
 **Checkpoint**: Full-screen capture works. User Stories 1 AND 2 both independently functional.
 

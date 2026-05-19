@@ -62,9 +62,29 @@ final class AppState: ObservableObject {
     }
 
     func startFullScreenCapture() {
-        let screen = currentScreen
-        guard let image = CaptureService.captureDisplay(screen.displayID) else { return }
-        saveAndShow(cgImage: image)
+        let screens = NSScreen.screens
+        let capture = Capture(mode: .fullScreen, sourceRect: nil, sourceWindowID: nil)
+
+        var firstImage: CGImage?
+
+        for (index, screen) in screens.enumerated() {
+            guard let image = CaptureService.captureDisplay(screen.displayID) else { continue }
+            if index == 0 { firstImage = image }
+
+            let suffix = screens.count > 1 ? "Display\(index + 1)" : ""
+            let filename = capture.timestampFilename(suffix: suffix)
+
+            do {
+                let fileURL = try FileService.savePNG(image: image, filename: filename)
+                print("[Cappy] Saved: \(fileURL.path)")
+            } catch {
+                print("[Cappy] Save failed (\(suffix)): \(error.localizedDescription)")
+            }
+        }
+
+        if let firstImage {
+            thumbnailImage = firstImage
+        }
     }
 
     func startWindowCapture() {
