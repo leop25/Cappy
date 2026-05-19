@@ -33,7 +33,7 @@ enum AnnotationColor: String, CaseIterable {
     }
 }
 
-struct Annotation: Identifiable {
+struct Annotation: Identifiable, Equatable {
     var id = UUID()
     var type: AnnotationType
     var origin: CGPoint

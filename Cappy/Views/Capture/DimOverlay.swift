@@ -12,6 +12,8 @@ class DimOverlay {
     private var onComplete: ((CGRect?) -> Void)?
     private var onWindowPicked: ((CGWindowID?) -> Void)?
     private var screen: NSScreen?
+    private var localMonitor: Any?
+    private var cancelAction: (() -> Void)?
 
     func showForRegion(
         on screen: NSScreen,
@@ -88,10 +90,20 @@ class DimOverlay {
         hostingView?.frame = window?.contentView?.bounds ?? screenRect
         window?.makeKeyAndOrderFront(nil)
 
+        cancelAction = {
+            if mode == .windowPicker { self.completeWindow(windowID: nil) }
+            else { self.complete(rect: nil) }
+        }
+        localMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            if event.keyCode == 53 { self?.cancelAction?(); return nil }
+            return event
+        }
+
         NSCursor.crosshair.push()
     }
 
     private func complete(rect: CGRect?) {
+        if let monitor = localMonitor { NSEvent.removeMonitor(monitor); localMonitor = nil }
         NSCursor.crosshair.pop()
         window?.orderOut(nil)
         window = nil
@@ -103,6 +115,7 @@ class DimOverlay {
     }
 
     private func completeWindow(windowID: CGWindowID?) {
+        if let monitor = localMonitor { NSEvent.removeMonitor(monitor); localMonitor = nil }
         NSCursor.crosshair.pop()
         window?.orderOut(nil)
         window = nil
@@ -114,6 +127,7 @@ class DimOverlay {
     }
 
     private func completeAndTrigger(action: @escaping () -> Void) {
+        if let monitor = localMonitor { NSEvent.removeMonitor(monitor); localMonitor = nil }
         NSCursor.crosshair.pop()
         window?.orderOut(nil)
         window = nil

@@ -7,8 +7,8 @@ struct AnnotationEditor: View {
     let fileURL: URL
     let onClose: () -> Void
 
-    @Environment(\.dismiss) private var dismiss
     @State private var hasUnsavedChanges = false
+    @State private var showCloseAlert = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -22,11 +22,11 @@ struct AnnotationEditor: View {
                 Spacer()
 
                 HStack(spacing: 8) {
-                    Button("Undo") { service.undo() }
+                    Button("Undo") { service.undo(); markChanged() }
                         .disabled(!service.canUndo)
                         .keyboardShortcut("z", modifiers: [.command])
 
-                    Button("Redo") { service.redo() }
+                    Button("Redo") { service.redo(); markChanged() }
                         .disabled(!service.canRedo)
                         .keyboardShortcut("z", modifiers: [.command, .shift])
 
@@ -47,15 +47,21 @@ struct AnnotationEditor: View {
             NSApp.activate(ignoringOtherApps: true)
         }
         .onDisappear {
-            if hasUnsavedChanges {
-                save()
-            }
             NSApp.setActivationPolicy(.accessory)
             onClose()
         }
-        .onReceive(NotificationCenter.default.publisher(for: NSWindow.willCloseNotification)) { _ in
-            if hasUnsavedChanges { save() }
+        .alert("Unsaved Changes", isPresented: $showCloseAlert) {
+            Button("Save") { save(); closeWindow() }
+            Button("Discard") { closeWindow() }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("You have unsaved annotations. Save before closing?")
         }
+        .onChange(of: service.annotations) { _, _ in markChanged() }
+    }
+
+    private func markChanged() {
+        hasUnsavedChanges = true
     }
 
     private func save() {
@@ -64,7 +70,14 @@ struct AnnotationEditor: View {
             try FileService.overwritePNG(image: annotated, at: fileURL)
             hasUnsavedChanges = false
         } catch {
-            print("[Cappy] Annotation save failed: \(error)")
+            let alert = NSAlert()
+            alert.messageText = "Save Failed"
+            alert.informativeText = error.localizedDescription
+            alert.runModal()
         }
+    }
+
+    private func closeWindow() {
+        NSApp.keyWindow?.close()
     }
 }

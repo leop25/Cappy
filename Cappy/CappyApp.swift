@@ -7,17 +7,7 @@ struct CappyApp: App {
 
     var body: some Scene {
         MenuBarExtra("Cappy", systemImage: "camera.viewfinder") {
-            Button("Capture Region") { appState.startRegionCapture() }
-                .keyboardShortcut("5", modifiers: [.command, .shift])
-            Button("Capture Full Screen") { appState.startFullScreenCapture() }
-                .keyboardShortcut("6", modifiers: [.command, .shift])
-            Button("Capture Window") { appState.startWindowCapture() }
-                .keyboardShortcut("7", modifiers: [.command, .shift])
-            Divider()
-            Button("Open Screenshots Folder") { appState.openScreenshotsFolder() }
-            Divider()
-            Button("Quit Cappy") { NSApplication.shared.terminate(nil) }
-                .keyboardShortcut("q", modifiers: [.command])
+            MenuBarView(appState: appState)
         }
 
         WindowGroup("Thumbnail", id: "thumbnail") {}  // unused — thumbnail is NSWindow-based
@@ -156,8 +146,19 @@ final class AppState: ObservableObject {
             lastCaptureImage = cgImage
         } catch {
             print("[Cappy] Save failed: \(error.localizedDescription)")
+            showSaveFailure(error)
+            return
         }
         showThumbnail(cgImage: cgImage)
+    }
+
+    private func showSaveFailure(_ error: Error) {
+        DispatchQueue.main.async {
+            let alert = NSAlert()
+            alert.messageText = "Save Failed"
+            alert.informativeText = error.localizedDescription
+            alert.runModal()
+        }
     }
 
     private var thumbnailWindow: NSWindow?

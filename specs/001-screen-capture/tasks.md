@@ -129,10 +129,10 @@ All source code lives under `Cappy/` at repository root (single Xcode project). 
 
 ### Implementation for User Story 5
 
-- [ ] T031 [US5] Build menu bar dropdown in Cappy/Views/MenuBar/MenuBarView.swift: Capture Region, Capture Full Screen, Capture Window items with keyboard shortcut labels
-- [ ] T032 [US5] Wire menu bar actions to capture modes (call same handlers as keyboard shortcuts) in CappyApp.swift
-- [ ] T033 [US5] Add "Open Screenshots Folder" menu item that opens `~/Pictures/Cappy/` in Finder via NSWorkspace.shared.open
-- [ ] T034 [US5] Add "Keyboard Shortcuts" info item (shows alert with current shortcut assignments) and "About Cappy" item (standard about window) in Cappy/Views/MenuBar/MenuBarView.swift
+- [x] T031 [US5] Build menu bar dropdown in Cappy/Views/MenuBar/MenuBarView.swift: Capture Region, Capture Full Screen, Capture Window items with keyboard shortcut labels
+- [x] T032 [US5] Wire menu bar actions to capture modes (call same handlers as keyboard shortcuts) in CappyApp.swift
+- [x] T033 [US5] Add "Open Screenshots Folder" menu item that opens `~/Pictures/Cappy/` in Finder via NSWorkspace.shared.open
+- [x] T034 [US5] Add "Keyboard Shortcuts" info item (shows alert with current shortcut assignments) and "About Cappy" item (standard about window) in Cappy/Views/MenuBar/MenuBarView.swift
 
 **Checkpoint**: Menu bar integration complete. All capture modes accessible via mouse with 2-3 clicks.
 
@@ -142,11 +142,11 @@ All source code lives under `Cappy/` at repository root (single Xcode project). 
 
 **Purpose**: Edge cases, error handling, and final integration
 
-- [ ] T035 [P] Add Escape key handler to cancel active capture (dismiss overlay, no file saved) in Cappy/Views/Capture/DimOverlay.swift
-- [ ] T036 [P] Add disk space check before save; show notification if save fails due to insufficient space in Cappy/Services/FileService.swift
-- [ ] T037 [P] Handle Accessibility permission: check on launch via AXIsProcessTrusted, prompt with alert + System Preferences button if needed in CappyApp.swift
-- [ ] T038 [P] Handle quit-with-unsaved-editor: prompt save/discard/cancel dialog when Cmd+Q while annotation editor has unsaved changes in CappyApp.swift
-- [ ] T039 Run quickstart.md validation: build, run, capture region, annotate, verify save location
+- [x] T035 [P] Add Escape key handler to cancel active capture (dismiss overlay, no file saved) in Cappy/Views/Capture/DimOverlay.swift
+- [x] T036 [P] Add disk space check before save; show notification if save fails due to insufficient space in Cappy/Services/FileService.swift
+- [x] T037 [P] Handle Accessibility permission: check on launch via AXIsProcessTrusted, prompt with alert + System Preferences button if needed in CappyApp.swift
+- [x] T038 [P] Handle quit-with-unsaved-editor: prompt save/discard/cancel dialog when Cmd+Q while annotation editor has unsaved changes in CappyApp.swift
+- [x] T039 Run quickstart.md validation: build, run, capture region, annotate, verify save location
 
 ---
 
