@@ -55,7 +55,11 @@ final class AppState: ObservableObject {
     func startRegionCapture() {
         let screen = currentScreen
         dimOverlay = DimOverlay()
-        dimOverlay?.show(on: screen) { [weak self] rect in
+        dimOverlay?.showForRegion(
+            on: screen,
+            onFullScreen: { [weak self] in self?.startFullScreenCapture() },
+            onWindowCapture: { [weak self] in self?.startWindowCapture() }
+        ) { [weak self] rect in
             guard let self, let rect else { return }
             self.captureRegion(rect: rect, screen: screen)
         }
@@ -66,16 +70,28 @@ final class AppState: ObservableObject {
         let capture = Capture(mode: .fullScreen, sourceRect: nil, sourceWindowID: nil)
 
         var firstImage: CGImage?
+        var captureCount = 0
 
         for (index, screen) in screens.enumerated() {
-            guard let image = CaptureService.captureDisplay(screen.displayID) else { continue }
-            if index == 0 { firstImage = image }
+            let image: CGImage?
+            if let displayCapture = CaptureService.captureDisplay(screen.displayID) {
+                image = displayCapture
+            } else {
+                image = CaptureService.captureDesktop(screen.frame)
+            }
+
+            guard let cgImage = image else {
+                print("[Cappy] FullScreen: display \(screen.displayID) capture returned nil")
+                continue
+            }
+            captureCount += 1
+            if index == 0 { firstImage = cgImage }
 
             let suffix = screens.count > 1 ? "Display\(index + 1)" : ""
             let filename = capture.timestampFilename(suffix: suffix)
 
             do {
-                let fileURL = try FileService.savePNG(image: image, filename: filename)
+                let fileURL = try FileService.savePNG(image: cgImage, filename: filename)
                 print("[Cappy] Saved: \(fileURL.path)")
             } catch {
                 print("[Cappy] Save failed (\(suffix)): \(error.localizedDescription)")
@@ -84,14 +100,25 @@ final class AppState: ObservableObject {
 
         if let firstImage {
             thumbnailImage = firstImage
+        } else if captureCount == 0 {
+            DispatchQueue.main.async {
+                let alert = NSAlert()
+                alert.messageText = "Capture Failed"
+                alert.informativeText = "Could not capture the display."
+                alert.runModal()
+            }
         }
     }
 
     func startWindowCapture() {
-        // Placeholder: Phase 5 will implement full window picker
         let screen = currentScreen
-        guard let image = CaptureService.captureDisplay(screen.displayID) else { return }
-        saveAndShow(cgImage: image)
+        dimOverlay = DimOverlay()
+        dimOverlay?.showForWindow(on: screen) { _ in
+            // Region callback not used in window mode
+        } onWindowPicked: { [weak self] windowID in
+            guard let self, let windowID else { return }
+            self.captureWindow(windowID: windowID)
+        }
     }
 
     // MARK: - Pipeline
@@ -107,6 +134,19 @@ final class AppState: ObservableObject {
             displayID: displayID
         ) else { return }
 
+        saveAndShow(cgImage: image)
+    }
+
+    private func captureWindow(windowID: CGWindowID) {
+        guard let image = CaptureService.captureWindow(windowID: windowID) else {
+            DispatchQueue.main.async {
+                let alert = NSAlert()
+                alert.messageText = "Capture Failed"
+                alert.informativeText = "Could not capture the selected window."
+                alert.runModal()
+            }
+            return
+        }
         saveAndShow(cgImage: image)
     }
 

@@ -91,11 +91,11 @@ All source code lives under `Cappy/` at repository root (single Xcode project). 
 
 ### Implementation for User Story 3
 
-- [ ] T019 [US3] Add window enumeration method using CGWindowListCopyWindowInfo (filter visible, non-desktop windows, layer < 1000) in Cappy/Services/CaptureService.swift
-- [ ] T020 [US3] Add window capture method using CGWindowListCreateImage with kCGWindowImageBoundsIgnoreFraming for shadow inclusion in Cappy/Services/CaptureService.swift
-- [ ] T021 [US3] Add window picker mode to DimOverlay: highlight window under cursor (draw colored border rect), click to capture, Escape to cancel in Cappy/Views/Capture/DimOverlay.swift
-- [ ] T022 [US3] Register global keyboard shortcut for window capture (Cmd+Shift+7 fallback) in CappyApp.swift
-- [ ] T023 [US3] Wire window capture pipeline: shortcut → DimOverlay.windowPickerMode → user click → CaptureService.window(id) → FileService.save() → ThumbnailView.show() in CappyApp.swift
+- [x] T019 [US3] Add window enumeration method using CGWindowListCopyWindowInfo (filter visible, non-desktop windows, layer < 1000) in Cappy/Services/CaptureService.swift
+- [x] T020 [US3] Add window capture method using CGWindowListCreateImage with kCGWindowImageBoundsIgnoreFraming for shadow inclusion in Cappy/Services/CaptureService.swift
+- [x] T021 [US3] Add window picker mode to DimOverlay: highlight window under cursor (draw colored border rect), click to capture, Escape to cancel in Cappy/Views/Capture/DimOverlay.swift
+- [x] T022 [US3] Register global keyboard shortcut for window capture (Cmd+Shift+7 fallback) in CappyApp.swift
+- [x] T023 [US3] Wire window capture pipeline: shortcut → DimOverlay.windowPickerMode → user click → CaptureService.window(id) → FileService.save() → ThumbnailView.show() in CappyApp.swift
 
 **Checkpoint**: All three capture modes (region, full-screen, window) now functional.
 
