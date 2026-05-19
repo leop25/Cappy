@@ -1,0 +1,33 @@
+# Xcode
+.build/
+DerivedData/
+*.xcuserdata/
+*.xcworkspace/xcuserdata/
+*.xcodeproj/xcuserdata/
+*.xcodeproj/project.xcworkspace/xcuserdata/
+*.xcodeproj/xcshareddata/xcschemes/xcschememanagement.plist
+
+# Swift Package Manager
+.swiftpm/
+Packages/
+Package.resolved
+
+# Build artifacts
+*.o
+*.d
+*.dSYM
+*.app
+*.ipa
+
+# macOS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Secrets
+.env*
+*.key
+*.pem
