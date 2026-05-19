@@ -234,9 +234,16 @@ struct DimOverlayContent: View {
 
     private func updateHoveredWindow() {
         let mouseLocation = NSEvent.mouseLocation
-        let windows = CaptureService.enumerateWindows(for: screen)
+        let allWindows = CaptureService.enumerateWindows(for: screen)
 
-        for dict in windows {
+        let desktopRect = NSScreen.screens.map { $0.frame }.reduce(CGRect.zero) { $0.union($1) }
+        let flippedMouseY = desktopRect.maxY - mouseLocation.y
+        let mouseInTopLeft = CGPoint(x: mouseLocation.x, y: flippedMouseY)
+
+        var bestWindow: (rect: CGRect, id: CGWindowID, name: String, layer: Int)?
+        let screenArea = screen.frame.width * screen.frame.height
+
+        for dict in allWindows {
             guard let bounds = dict[kCGWindowBounds as String] as? [String: Any],
                   let x = bounds["X"] as? CGFloat,
                   let y = bounds["Y"] as? CGFloat,
@@ -246,16 +253,29 @@ struct DimOverlayContent: View {
                 continue
             }
             let globalRect = CGRect(x: x, y: y, width: w, height: h)
-            if globalRect.contains(mouseLocation) {
-                viewModel.hoveredWindowGlobalRect = globalRect
-                viewModel.hoveredWindowID = windowID
-                viewModel.hoveredWindowName = dict[kCGWindowOwnerName as String] as? String ?? ""
-                return
+            guard globalRect.contains(mouseInTopLeft) else { continue }
+
+            if w * h > screenArea * 0.95 { continue }
+
+            let layer = dict[kCGWindowLayer as String] as? Int ?? 0
+            let name = dict[kCGWindowOwnerName as String] as? String ?? ""
+
+            if let current = bestWindow {
+                if layer > current.layer { bestWindow = (globalRect, windowID, name, layer) }
+            } else {
+                bestWindow = (globalRect, windowID, name, layer)
             }
         }
-        viewModel.hoveredWindowGlobalRect = .zero
-        viewModel.hoveredWindowID = 0
-        viewModel.hoveredWindowName = ""
+
+        if let best = bestWindow {
+            viewModel.hoveredWindowGlobalRect = best.rect
+            viewModel.hoveredWindowID = best.id
+            viewModel.hoveredWindowName = best.name
+        } else {
+            viewModel.hoveredWindowGlobalRect = .zero
+            viewModel.hoveredWindowID = 0
+            viewModel.hoveredWindowName = ""
+        }
     }
 
     @ViewBuilder
