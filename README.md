@@ -1,5 +1,7 @@
 # Cappy
 
+[![Swift](https://github.com/leop25/Cappy/actions/workflows/swift.yml/badge.svg)](https://github.com/leop25/Cappy/actions/workflows/swift.yml)
+
 <p align="center">
   <img src="Cappy/Resources/Assets.xcassets/AppIcon.appiconset/cappy-app-icon-256.png" width="128" height="128" alt="Cappy app icon">
 </p>
