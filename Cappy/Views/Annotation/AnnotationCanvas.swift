@@ -15,10 +15,17 @@ struct AnnotationCanvas: View {
 
     var body: some View {
         ZStack {
+            Color(nsColor: .underPageBackgroundColor)
+
             Canvas { context, size in
                 let imageSize = CGSize(width: CGFloat(image.width), height: CGFloat(image.height))
-                let fittedRect = fitRect(imageSize, in: CGRect(origin: .zero, size: size))
+                let drawingRect = CGRect(origin: .zero, size: size).insetBy(dx: 28, dy: 28)
+                let fittedRect = fitRect(imageSize, in: drawingRect)
+                let imagePath = RoundedRectangle(cornerRadius: 10, style: .continuous).path(in: fittedRect)
+
+                context.fill(imagePath, with: .color(.black.opacity(0.08)))
                 context.draw(Image(decorative: image, scale: 1.0), in: fittedRect)
+                context.stroke(imagePath, with: .color(.white.opacity(0.32)), lineWidth: 0.5)
 
                 for annotation in service.annotations {
                     let color = swiftUIColor(for: annotation.color)
@@ -107,19 +114,29 @@ struct AnnotationCanvas: View {
             )
 
             if showTextInput {
-                VStack(spacing: 8) {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Text")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(.secondary)
+
                     TextField("Type here", text: $textInput)
                         .textFieldStyle(.roundedBorder)
-                        .frame(width: 200)
-                    HStack {
+                        .frame(width: 220)
+
+                    HStack(spacing: 8) {
                         Button("Cancel") { showTextInput = false }
-                        Button("OK") { commitText() }
+                        Spacer()
+                        Button("Add") { commitText() }
                             .buttonStyle(.borderedProminent)
                     }
                 }
-                .padding()
-                .background(.regularMaterial)
-                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .padding(14)
+                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .stroke(.white.opacity(0.22), lineWidth: 0.5)
+                }
+                .shadow(color: .black.opacity(0.22), radius: 18, x: 0, y: 10)
                 .position(textPosition ?? .zero)
             }
         }
@@ -130,7 +147,12 @@ struct AnnotationCanvas: View {
         let scale = min(container.width / contentSize.width, container.height / contentSize.height)
         let w = contentSize.width * scale
         let h = contentSize.height * scale
-        return CGRect(x: (container.width - w) / 2, y: (container.height - h) / 2, width: w, height: h)
+        return CGRect(
+            x: container.minX + (container.width - w) / 2,
+            y: container.minY + (container.height - h) / 2,
+            width: w,
+            height: h
+        )
     }
 
     private func findAnnotation(near point: CGPoint, threshold: CGFloat = 20) -> UUID? {

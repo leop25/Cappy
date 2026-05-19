@@ -7,39 +7,58 @@ struct CaptureToolbar: View {
     let onCancel: () -> Void
 
     var body: some View {
-        HStack(spacing: 16) {
-            toolbarButton(title: "Region", action: onCaptureRegion)
-            toolbarButton(title: "Full Screen", action: onCaptureFullScreen)
-            toolbarButton(title: "Window", action: onCaptureWindow)
-            Divider().frame(height: 20)
-            Button("Cancel", action: onCancel)
-                .keyboardShortcut(.escape, modifiers: [])
+        HStack(spacing: 8) {
+            toolbarButton(title: "Region", systemImage: "selection.pin.in.out", action: onCaptureRegion)
+            toolbarButton(title: "Screen", systemImage: "rectangle.inset.filled", action: onCaptureFullScreen)
+            toolbarButton(title: "Window", systemImage: "macwindow", action: onCaptureWindow)
+
+            Rectangle()
+                .fill(.separator.opacity(0.65))
+                .frame(width: 1, height: 24)
+                .padding(.horizontal, 4)
+
+            Button(action: onCancel) {
+                Label("Cancel", systemImage: "xmark")
+                    .labelStyle(.iconOnly)
+                    .font(.system(size: 13, weight: .semibold))
+                    .frame(width: 30, height: 30)
+            }
+            .buttonStyle(.plain)
+            .contentShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+            .background(.quaternary.opacity(0.8), in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+            .help("Cancel")
+            .accessibilityLabel("Cancel")
+            .keyboardShortcut(.escape, modifiers: [])
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 10)
-        .background(
-            RoundedRectangle(cornerRadius: 12)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .background {
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .fill(.ultraThinMaterial)
-                .shadow(radius: 8)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 12)
-                .stroke(.secondary.opacity(0.3), lineWidth: 0.5)
-        )
+                .shadow(color: .black.opacity(0.22), radius: 24, x: 0, y: 12)
+                .shadow(color: .black.opacity(0.16), radius: 4, x: 0, y: 1)
+        }
+        .overlay {
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(.white.opacity(0.22), lineWidth: 0.5)
+        }
     }
 
-    private func toolbarButton(title: String, action: @escaping () -> Void) -> some View {
+    private func toolbarButton(title: String, systemImage: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            Text(title)
-                .font(.system(size: 13, weight: .medium))
-                .frame(minWidth: 70)
+            Label(title, systemImage: systemImage)
+                .font(.system(size: 12, weight: .semibold))
+                .labelStyle(.titleAndIcon)
+                .frame(minWidth: 82, minHeight: 30)
         }
         .buttonStyle(.plain)
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4)
-        .background(
-            RoundedRectangle(cornerRadius: 6)
-                .fill(.quaternary)
-        )
+        .foregroundStyle(.primary)
+        .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .background(.quaternary.opacity(0.75), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .stroke(.white.opacity(0.16), lineWidth: 0.5)
+        }
+        .help(title)
     }
 }

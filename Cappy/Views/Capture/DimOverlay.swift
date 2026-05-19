@@ -174,14 +174,23 @@ struct DimOverlayContent: View {
                 dimCanvas(size: geometry.size)
 
                 VStack {
+                    captureHint
+                        .padding(.top, 34)
+                    Spacer()
+                }
+
+                VStack {
                     Spacer()
                     if viewModel.mode == .windowPicker && !viewModel.hoveredWindowName.isEmpty {
-                        Text(viewModel.hoveredWindowName)
-                            .font(.system(size: 12, weight: .medium))
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 4)
-                            .background(.ultraThinMaterial)
-                            .clipShape(RoundedRectangle(cornerRadius: 6))
+                        Label(viewModel.hoveredWindowName, systemImage: "macwindow")
+                            .font(.system(size: 12, weight: .semibold))
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 7)
+                            .background(.ultraThinMaterial, in: Capsule())
+                            .overlay {
+                                Capsule()
+                                    .stroke(.white.opacity(0.2), lineWidth: 0.5)
+                            }
                             .padding(.bottom, 8)
                     }
                     CaptureToolbar(
@@ -224,7 +233,7 @@ struct DimOverlayContent: View {
             )
             .onAppear {
                 if viewModel.mode == .windowPicker {
-                    hoverTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak viewModel] _ in
+                    hoverTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { _ in
                         DispatchQueue.main.async {
                             updateHoveredWindow()
                         }
@@ -236,6 +245,32 @@ struct DimOverlayContent: View {
                 hoverTimer = nil
             }
         }
+    }
+
+    private var captureHint: some View {
+        HStack(spacing: 8) {
+            Image(systemName: viewModel.mode == .region ? "plus.viewfinder" : "macwindow")
+                .symbolRenderingMode(.hierarchical)
+                .font(.system(size: 14, weight: .semibold))
+
+            Text(viewModel.mode == .region ? "Drag to capture a region" : "Click a window to capture it")
+                .font(.system(size: 13, weight: .semibold))
+
+            Text("Esc")
+                .font(.system(size: 11, weight: .bold, design: .rounded))
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 2)
+                .background(.quaternary.opacity(0.8), in: RoundedRectangle(cornerRadius: 5, style: .continuous))
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 9)
+        .background(.ultraThinMaterial, in: Capsule())
+        .overlay {
+            Capsule()
+                .stroke(.white.opacity(0.22), lineWidth: 0.5)
+        }
+        .shadow(color: .black.opacity(0.18), radius: 16, x: 0, y: 8)
     }
 
     private func updateRect(start: CGPoint, current: CGPoint) {
@@ -304,10 +339,28 @@ struct DimOverlayContent: View {
 
                 if currentRect.width > 0 || currentRect.height > 0 {
                     let border = Path(currentRect)
-                    context.stroke(border, with: .color(.white.opacity(0.8)), lineWidth: 0.5)
+                    context.stroke(border, with: .color(.white.opacity(0.92)), lineWidth: 1)
+                    context.stroke(border, with: .color(.blue.opacity(0.82)), lineWidth: 2)
+
+                    let handleSize: CGFloat = 9
+                    for point in [
+                        currentRect.origin,
+                        CGPoint(x: currentRect.maxX, y: currentRect.minY),
+                        CGPoint(x: currentRect.minX, y: currentRect.maxY),
+                        CGPoint(x: currentRect.maxX, y: currentRect.maxY)
+                    ] {
+                        let handle = CGRect(
+                            x: point.x - handleSize / 2,
+                            y: point.y - handleSize / 2,
+                            width: handleSize,
+                            height: handleSize
+                        )
+                        context.fill(Path(ellipseIn: handle), with: .color(.white))
+                        context.stroke(Path(ellipseIn: handle), with: .color(.blue), lineWidth: 1)
+                    }
                 }
             } else {
-                context.fill(Path(fullRect), with: .color(.black.opacity(0.2)))
+                context.fill(Path(fullRect), with: .color(.black.opacity(0.28)))
 
                 let global = viewModel.hoveredWindowGlobalRect
                 if !global.isEmpty && global.width > 0 {
@@ -318,7 +371,8 @@ struct DimOverlayContent: View {
                         height: global.height
                     )
                     let highlight = Path(localRect)
-                    context.stroke(highlight, with: .color(.blue), lineWidth: 3)
+                    context.stroke(highlight, with: .color(.white.opacity(0.9)), lineWidth: 1)
+                    context.stroke(highlight, with: .color(.blue.opacity(0.95)), lineWidth: 4)
                 }
             }
         }

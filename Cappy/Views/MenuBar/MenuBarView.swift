@@ -6,42 +6,21 @@ struct MenuBarView: View {
     var body: some View {
         Group {
             Button(action: appState.startRegionCapture) {
-                HStack {
-                    Text("Capture Region")
-                    Spacer()
-                    Text("⇧⌘5")
-                        .foregroundColor(.secondary)
-                        .font(.system(size: 11))
-                }
+                Label("Capture Region", systemImage: "selection.pin.in.out")
             }
 
             Button(action: appState.startFullScreenCapture) {
-                HStack {
-                    Text("Capture Full Screen")
-                    Spacer()
-                    Text("⇧⌘6")
-                        .foregroundColor(.secondary)
-                        .font(.system(size: 11))
-                }
+                Label("Capture Full Screen", systemImage: "macwindow.on.rectangle")
             }
 
             Button(action: appState.startWindowCapture) {
-                HStack {
-                    Text("Capture Window")
-                    Spacer()
-                    Text("⇧⌘7")
-                        .foregroundColor(.secondary)
-                        .font(.system(size: 11))
-                }
+                Label("Capture Window", systemImage: "macwindow")
             }
 
             Divider()
 
             Button(action: appState.openScreenshotsFolder) {
-                HStack {
-                    Text("Open Screenshots Folder")
-                    Spacer()
-                }
+                Label("Open Screenshots Folder", systemImage: "folder")
             }
 
             Divider()
@@ -63,31 +42,19 @@ struct MenuBarView: View {
                 """
                 alert.runModal()
             }) {
-                HStack {
-                    Text("Keyboard Shortcuts")
-                    Spacer()
-                }
+                Label("Keyboard Shortcuts", systemImage: "keyboard")
             }
 
             Button(action: {
                 NSApplication.shared.orderFrontStandardAboutPanel()
             }) {
-                HStack {
-                    Text("About Cappy")
-                    Spacer()
-                }
+                Label("About Cappy", systemImage: "info.circle")
             }
 
             Divider()
 
             Button(action: { NSApplication.shared.terminate(nil) }) {
-                HStack {
-                    Text("Quit Cappy")
-                    Spacer()
-                    Text("⌘Q")
-                        .foregroundColor(.secondary)
-                        .font(.system(size: 11))
-                }
+                Label("Quit Cappy", systemImage: "power")
             }
         }
     }

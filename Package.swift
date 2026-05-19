@@ -11,7 +11,8 @@ let package = Package(
             path: "Cappy",
             exclude: ["Info.plist"],
             resources: [
-                .process("Resources/Assets.xcassets")
+                .process("Resources/Assets.xcassets"),
+                .copy("Resources/CappyIcon.icns")
             ]
         )
     ]

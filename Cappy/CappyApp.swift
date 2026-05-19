@@ -1,5 +1,8 @@
 import SwiftUI
 import AppKit
+import Carbon.HIToolbox
+
+private var globalShortcutHandler: ((UInt32) -> Void)?
 
 @main
 struct CappyApp: App {
@@ -21,11 +24,12 @@ final class AppState: ObservableObject {
     private var lastCaptureURL: URL?
     private var dimOverlay: DimOverlay?
     private var globalMonitor: Any?
+    private var hotKeyRefs: [EventHotKeyRef?] = []
+    private var hotKeyEventHandler: EventHandlerRef?
     private var editorWindow: NSWindow?
 
     init() {
         registerGlobalShortcuts()
-        requestAccessibilityPermission()
     }
 
     private var currentScreen: NSScreen {
@@ -171,13 +175,13 @@ final class AppState: ObservableObject {
             onClick: { [weak self] in self?.openAnnotationEditor() },
             onDismiss: { [weak self] in self?.thumbnailWindow?.close() }
         )
-        .frame(width: 200, height: 160)
+        .frame(width: 240, height: 202)
 
         let hostingView = NSHostingView(rootView: thumbView)
-        hostingView.frame = NSRect(x: 0, y: 0, width: 200, height: 160)
+        hostingView.frame = NSRect(x: 0, y: 0, width: 240, height: 202)
 
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 200, height: 160),
+            contentRect: NSRect(x: 0, y: 0, width: 240, height: 202),
             styleMask: .borderless,
             backing: .buffered,
             defer: false
@@ -191,7 +195,7 @@ final class AppState: ObservableObject {
         guard let screen = NSScreen.main else { return }
         let screenFrame = screen.visibleFrame
         let origin = NSPoint(
-            x: screenFrame.maxX - 220,
+            x: screenFrame.maxX - 260,
             y: screenFrame.minY + 20
         )
         window.setFrameOrigin(origin)
@@ -216,18 +220,20 @@ final class AppState: ObservableObject {
                 self?.editorWindow = nil
             }
         )
-        .frame(minWidth: 600, minHeight: 400)
+        .frame(minWidth: 760, minHeight: 520)
 
         let hostingView = NSHostingView(rootView: contentView)
-        hostingView.frame = NSRect(x: 0, y: 0, width: 800, height: 600)
+        hostingView.frame = NSRect(x: 0, y: 0, width: 920, height: 680)
 
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 800, height: 600),
+            contentRect: NSRect(x: 0, y: 0, width: 920, height: 680),
             styleMask: [.titled, .closable, .resizable, .miniaturizable],
             backing: .buffered,
             defer: false
         )
-        window.title = "Cappy — Annotation Editor"
+        window.title = "Cappy"
+        window.titleVisibility = .hidden
+        window.toolbarStyle = .unified
         window.contentView = hostingView
         window.center()
         window.makeKeyAndOrderFront(nil)
@@ -245,21 +251,87 @@ final class AppState: ObservableObject {
     // MARK: - Global Shortcuts
 
     private func registerGlobalShortcuts() {
-        globalMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            self?.handleGlobalKeyEvent(event)
+        globalShortcutHandler = { [weak self] id in
+            Task { @MainActor in
+                self?.handleGlobalShortcut(id)
+            }
+        }
+
+        var eventType = EventTypeSpec(
+            eventClass: OSType(kEventClassKeyboard),
+            eventKind: OSType(kEventHotKeyPressed)
+        )
+
+        let handlerStatus = InstallEventHandler(
+            GetApplicationEventTarget(),
+            { _, event, _ -> OSStatus in
+                var hotKeyID = EventHotKeyID()
+                let status = GetEventParameter(
+                    event,
+                    EventParamName(kEventParamDirectObject),
+                    EventParamType(typeEventHotKeyID),
+                    nil,
+                    MemoryLayout<EventHotKeyID>.size,
+                    nil,
+                    &hotKeyID
+                )
+                guard status == noErr else { return status }
+
+                DispatchQueue.main.async {
+                    globalShortcutHandler?(hotKeyID.id)
+                }
+                return noErr
+            },
+            1,
+            &eventType,
+            nil,
+            &hotKeyEventHandler
+        )
+
+        guard handlerStatus == noErr else {
+            print("[Cappy] Failed to install hotkey handler: \(handlerStatus)")
+            return
+        }
+
+        registerHotKey(id: 1, keyCode: UInt32(kVK_ANSI_5), label: "Capture Region")
+        registerHotKey(id: 2, keyCode: UInt32(kVK_ANSI_6), label: "Capture Full Screen")
+        registerHotKey(id: 3, keyCode: UInt32(kVK_ANSI_7), label: "Capture Window")
+    }
+
+    private func registerHotKey(id: UInt32, keyCode: UInt32, label: String) {
+        var hotKeyRef: EventHotKeyRef?
+        let hotKeyID = EventHotKeyID(signature: fourCharCode("CAPY"), id: id)
+        let status = RegisterEventHotKey(
+            keyCode,
+            UInt32(cmdKey | shiftKey),
+            hotKeyID,
+            GetApplicationEventTarget(),
+            0,
+            &hotKeyRef
+        )
+
+        if status == noErr {
+            hotKeyRefs.append(hotKeyRef)
+        } else {
+            print("[Cappy] Failed to register \(label) hotkey: \(status)")
         }
     }
 
-    private func handleGlobalKeyEvent(_ event: NSEvent) {
-        guard event.modifierFlags.intersection(.deviceIndependentFlagsMask) == [.command, .shift] else {
-            return
-        }
-        switch event.keyCode {
-        case 23: startRegionCapture()
-        case 22: startFullScreenCapture()
-        case 26: startWindowCapture()
+    private func handleGlobalShortcut(_ id: UInt32) {
+        switch id {
+        case 1: startRegionCapture()
+        case 2: startFullScreenCapture()
+        case 3: startWindowCapture()
         default: break
         }
+    }
+
+    private func fourCharCode(_ string: String) -> OSType {
+        var result: OSType = 0
+        for scalar in string.unicodeScalars.prefix(4) {
+            result = (result << 8) + OSType(scalar.value)
+        }
+        return result
     }
 
     private func requestAccessibilityPermission() {

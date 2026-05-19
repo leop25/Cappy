@@ -17,17 +17,16 @@ git clone <repo-url>
 cd Cappy
 
 # Open in Xcode
-open Cappy.xcodeproj
+open Package.swift
 ```
 
-Xcode auto-resolves Swift package dependencies (none for v1).
+There are no third-party package dependencies.
 
 ## Build & Run
 
 1. Select the **Cappy** scheme and **My Mac** as the destination.
 2. Press `Cmd+R` to build and run.
-3. On first launch, macOS prompts for **Accessibility** permission. Grant it to
-   enable global keyboard shortcuts.
+3. Use the menu bar icon or global shortcuts to capture.
 
 ## Development Quick Reference
 
@@ -67,7 +66,7 @@ Cappy/
 | Full-screen capture | `CGDisplayCreateImage(_:)` |
 | Window capture | `CGWindowListCreateImage` + `CGWindowListCopyWindowInfo` |
 | PNG encoding | `CGImageDestinationCreateWithURL` with `kUTTypePNG` |
-| Global hotkeys | `NSEvent.addGlobalMonitorForEvents(matching:)` |
+| Global hotkeys | Carbon `RegisterEventHotKey` |
 | Dim overlay window | `NSWindow` (borderless, `.screenSaver` level) via AppKit bridging |
 | Menu bar | SwiftUI `MenuBarExtra` scene |
 | Annotation drawing | SwiftUI `Canvas` with `GraphicsContext` |
@@ -88,14 +87,10 @@ UI testing for the capture overlay is impractical via XCUITest due to its
 full-screen, system-level nature. Manual testing is required for:
 - Region drag selection across display boundaries
 - Window picker hover highlighting
-- Keyboard shortcut registration with system shortcuts
-- Accessibility permission prompts
+- Keyboard shortcut registration with system shortcut conflicts
 
 ### Debugging Tips
 
-- Set `CAPPY_DEBUG_OVERLAY=1` environment variable in Xcode scheme to make the
-  dim overlay semi-transparent instead of dim, allowing inspection behind it.
-- Log capture times: `CaptureService` prints the time from trigger to file
-  written for every capture (visible in Xcode console).
-- Thumbnail auto-dismiss can be disabled for debugging by setting
-  `CAPPY_DEBUG_THUMBNAIL=1` (thumbnail stays until clicked).
+- If a global shortcut does not fire, confirm macOS has not reserved the same
+  key combination in System Settings → Keyboard → Keyboard Shortcuts.
+- Capture output is always written to `~/Pictures/Cappy/`.
