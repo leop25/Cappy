@@ -9,153 +9,121 @@ struct AnnotationCanvas: View {
     @State private var isDragging: Bool = false
     @State private var textInput: String = ""
     @State private var textPosition: CGPoint?
+    @State private var pendingTextOrigin: CGPoint?
     @State private var showTextInput: Bool = false
     @State private var movingAnnotationID: UUID?
     @State private var lastTranslation: CGSize = .zero
 
     var body: some View {
-        ZStack {
-            Color(nsColor: .underPageBackgroundColor)
-
-            Canvas { context, size in
-                let imageSize = CGSize(width: CGFloat(image.width), height: CGFloat(image.height))
-                let drawingRect = CGRect(origin: .zero, size: size).insetBy(dx: 28, dy: 28)
-                let fittedRect = fitRect(imageSize, in: drawingRect)
-                let imagePath = RoundedRectangle(cornerRadius: 10, style: .continuous).path(in: fittedRect)
-
-                context.fill(imagePath, with: .color(.black.opacity(0.08)))
-                context.draw(Image(decorative: image, scale: 1.0), in: fittedRect)
-                context.stroke(imagePath, with: .color(.white.opacity(0.32)), lineWidth: 0.5)
-
-                for annotation in service.annotations {
-                    let color = swiftUIColor(for: annotation.color)
-                    if annotation.type == .text, let text = annotation.text {
-                        context.draw(
-                            Text(text).foregroundColor(color).font(.system(size: 18)),
-                            at: annotation.origin,
-                            anchor: .topLeading
-                        )
-                    } else {
-                        drawAnnotation(annotation, in: context, color: color)
-                    }
-                }
-
-                if isDragging, let start = dragStart, let current = dragCurrent, movingAnnotationID == nil {
-                    drawPreview(from: start, to: current, in: context)
-                }
-            }
-            .gesture(
-                DragGesture(minimumDistance: 1)
-                    .onChanged { value in
-                        if !isDragging {
-                            dragStart = value.startLocation
-                            isDragging = true
-                            lastTranslation = .zero
-                            if let id = findAnnotation(near: value.startLocation) {
-                                movingAnnotationID = id
-                            }
-                        }
-                        dragCurrent = value.location
-
-                        if let id = movingAnnotationID {
-                            let delta = CGPoint(
-                                x: value.translation.width - lastTranslation.width,
-                                y: value.translation.height - lastTranslation.height
-                            )
-                            service.moveAnnotation(id: id, by: delta)
-                            lastTranslation = value.translation
-                        }
-                    }
-                    .onEnded { value in
-                        isDragging = false
-
-                        if movingAnnotationID != nil {
-                            movingAnnotationID = nil
-                            lastTranslation = .zero
-                            dragStart = nil
-                            dragCurrent = nil
-                            return
-                        }
-
-                        guard let start = dragStart else { return }
-                        let end = value.location
-
-                        if service.selectedTool == .text {
-                            textPosition = value.location
-                            textInput = ""
-                            showTextInput = true
-                            dragStart = nil
-                            dragCurrent = nil
-                            return
-                        }
-
-                        let rect = makeRect(from: start, to: end)
-                        if service.selectedTool == .arrow, distance(start, end) < 5 {
-                            dragStart = nil; dragCurrent = nil; return
-                        }
-                        if service.selectedTool != .arrow, (rect.width < 2 || rect.height < 2) {
-                            dragStart = nil; dragCurrent = nil; return
-                        }
-
-                        let annotation = Annotation(
-                            type: service.selectedTool,
-                            origin: service.selectedTool == .arrow ? start : rect.origin,
-                            size: rect.size,
-                            endPoint: service.selectedTool == .arrow ? end : nil,
-                            color: service.selectedColor,
-                            lineWidth: service.selectedLineWidth,
-                            text: nil,
-                            zIndex: service.annotations.count
-                        )
-                        service.addAnnotation(annotation)
-                        dragStart = nil
-                        dragCurrent = nil
-                    }
-            )
-
-            if showTextInput {
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("Text")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(.secondary)
-
-                    TextField("Type here", text: $textInput)
-                        .textFieldStyle(.roundedBorder)
-                        .frame(width: 220)
-
-                    HStack(spacing: 8) {
-                        Button("Cancel") { showTextInput = false }
-                        Spacer()
-                        Button("Add") { commitText() }
-                            .buttonStyle(.borderedProminent)
-                    }
-                }
-                .padding(14)
-                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .stroke(.white.opacity(0.22), lineWidth: 0.5)
-                }
-                .shadow(color: .black.opacity(0.22), radius: 18, x: 0, y: 10)
-                .position(textPosition ?? .zero)
-            }
+        GeometryReader { proxy in
+            annotationSurface(layout: imageLayout(for: proxy.size))
         }
     }
 
-    private func fitRect(_ contentSize: CGSize, in container: CGRect) -> CGRect {
-        guard contentSize.width > 0, contentSize.height > 0 else { return container }
-        let scale = min(container.width / contentSize.width, container.height / contentSize.height)
-        let w = contentSize.width * scale
-        let h = contentSize.height * scale
-        return CGRect(
-            x: container.minX + (container.width - w) / 2,
-            y: container.minY + (container.height - h) / 2,
-            width: w,
-            height: h
-        )
+    private func annotationSurface(layout: ImageAnnotationLayout) -> some View {
+        ZStack {
+            Color(nsColor: .underPageBackgroundColor)
+            annotationCanvas(layout: layout)
+            textInputPopover
+        }
     }
 
-    private func findAnnotation(near point: CGPoint, threshold: CGFloat = 20) -> UUID? {
+    private func annotationCanvas(layout: ImageAnnotationLayout) -> some View {
+        Canvas { context, size in
+            let layout = imageLayout(for: size)
+            let fittedRect = layout.imageRect
+            let imagePath = RoundedRectangle(cornerRadius: 10, style: .continuous).path(in: fittedRect)
+
+            context.fill(imagePath, with: .color(.black.opacity(0.08)))
+            context.draw(Image(decorative: image, scale: 1.0), in: fittedRect)
+            context.stroke(imagePath, with: .color(.white.opacity(0.32)), lineWidth: 0.5)
+
+            for annotation in service.annotations {
+                let viewAnnotation = layout.annotationToView(annotation)
+                let color = swiftUIColor(for: annotation.color)
+                if annotation.type == .text, let text = annotation.text {
+                    context.draw(
+                        Text(text).foregroundColor(color).font(.system(size: viewAnnotation.fontSize)),
+                        at: viewAnnotation.origin,
+                        anchor: .topLeading
+                    )
+                } else {
+                    drawAnnotation(viewAnnotation, in: context, color: color)
+                }
+            }
+
+            if isDragging, let start = dragStart, let current = dragCurrent, movingAnnotationID == nil {
+                drawPreview(from: layout.viewPoint(for: start), to: layout.viewPoint(for: current), in: context)
+            }
+        }
+        .gesture(annotationDragGesture(layout: layout))
+    }
+
+    private func annotationDragGesture(layout: ImageAnnotationLayout) -> some Gesture {
+        DragGesture(minimumDistance: 1)
+            .onChanged { value in
+                if !isDragging {
+                    guard let start = layout.imagePoint(for: value.startLocation) else { return }
+                    dragStart = start
+                    isDragging = true
+                    lastTranslation = .zero
+                    if let id = findAnnotation(near: start, threshold: 20 / layout.scale) {
+                        movingAnnotationID = id
+                    }
+                }
+                dragCurrent = layout.clampedImagePoint(for: value.location)
+
+                if let id = movingAnnotationID {
+                    let delta = CGPoint(
+                        x: (value.translation.width - lastTranslation.width) / layout.scale,
+                        y: (value.translation.height - lastTranslation.height) / layout.scale
+                    )
+                    service.moveAnnotation(id: id, by: delta)
+                    lastTranslation = value.translation
+                }
+            }
+            .onEnded { value in
+                finishDrag(value, layout: layout)
+            }
+    }
+
+    @ViewBuilder
+    private var textInputPopover: some View {
+        if showTextInput {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Text")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(.secondary)
+
+                TextField("Type here", text: $textInput)
+                    .textFieldStyle(.roundedBorder)
+                    .frame(width: 220)
+
+                HStack(spacing: 8) {
+                    Button("Cancel") { cancelTextInput() }
+                    Spacer()
+                    Button("Add") { commitText() }
+                        .buttonStyle(.borderedProminent)
+                }
+            }
+            .padding(14)
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .stroke(.white.opacity(0.22), lineWidth: 0.5)
+            }
+            .shadow(color: .black.opacity(0.22), radius: 18, x: 0, y: 10)
+            .position(textPosition ?? .zero)
+        }
+    }
+
+    private func imageLayout(for size: CGSize) -> ImageAnnotationLayout {
+        let imageSize = CGSize(width: CGFloat(image.width), height: CGFloat(image.height))
+        let drawingRect = CGRect(origin: .zero, size: size).insetBy(dx: 28, dy: 28)
+        return ImageAnnotationLayout(imageSize: imageSize, container: drawingRect)
+    }
+
+    private func findAnnotation(near point: CGPoint, threshold: CGFloat) -> UUID? {
         for annotation in service.annotations.reversed() {
             if isPoint(point, nearAnnotation: annotation, threshold: threshold) {
                 return annotation.id
@@ -190,17 +158,77 @@ struct AnnotationCanvas: View {
         sqrt(pow(b.x - a.x, 2) + pow(b.y - a.y, 2))
     }
 
+    private func finishDrag(_ value: DragGesture.Value, layout: ImageAnnotationLayout) {
+        isDragging = false
+
+        if movingAnnotationID != nil {
+            movingAnnotationID = nil
+            lastTranslation = .zero
+            dragStart = nil
+            dragCurrent = nil
+            return
+        }
+
+        guard let start = dragStart else { return }
+        let end = layout.clampedImagePoint(for: value.location)
+
+        if service.selectedTool == .text {
+            pendingTextOrigin = end
+            textPosition = layout.viewPoint(for: end)
+            textInput = ""
+            showTextInput = true
+            dragStart = nil
+            dragCurrent = nil
+            return
+        }
+
+        let rect = makeRect(from: start, to: end)
+        if service.selectedTool == .arrow, distance(start, end) < 5 {
+            dragStart = nil
+            dragCurrent = nil
+            return
+        }
+        if service.selectedTool != .arrow, (rect.width < 2 || rect.height < 2) {
+            dragStart = nil
+            dragCurrent = nil
+            return
+        }
+
+        let annotation = Annotation(
+            type: service.selectedTool,
+            origin: service.selectedTool == .arrow ? start : rect.origin,
+            size: rect.size,
+            endPoint: service.selectedTool == .arrow ? end : nil,
+            color: service.selectedColor,
+            lineWidth: service.selectedLineWidth / layout.scale,
+            text: nil,
+            zIndex: service.annotations.count
+        )
+        service.addAnnotation(annotation)
+        dragStart = nil
+        dragCurrent = nil
+    }
+
+    private func cancelTextInput() {
+        showTextInput = false
+        textInput = ""
+        textPosition = nil
+        pendingTextOrigin = nil
+    }
+
     private func commitText() {
         showTextInput = false
-        guard let pos = textPosition, !textInput.isEmpty else { return }
+        guard let pos = pendingTextOrigin, !textInput.isEmpty else { return }
         let annotation = Annotation(
             type: .text, origin: pos, size: .zero, endPoint: nil,
             color: service.selectedColor, lineWidth: service.selectedLineWidth,
+            fontSize: 24,
             text: textInput, zIndex: service.annotations.count
         )
         service.addAnnotation(annotation)
         textInput = ""
         textPosition = nil
+        pendingTextOrigin = nil
     }
 
     private func makeRect(from start: CGPoint, to end: CGPoint) -> CGRect {
@@ -261,5 +289,68 @@ struct AnnotationCanvas: View {
         case .red: .red; case .yellow: .yellow; case .blue: .blue
         case .green: .green; case .white: .white; case .black: .black
         }
+    }
+}
+
+private struct ImageAnnotationLayout {
+    let imageSize: CGSize
+    let imageRect: CGRect
+    let scale: CGFloat
+
+    init(imageSize: CGSize, container: CGRect) {
+        self.imageSize = imageSize
+        guard imageSize.width > 0, imageSize.height > 0 else {
+            imageRect = container
+            scale = 1
+            return
+        }
+
+        scale = min(container.width / imageSize.width, container.height / imageSize.height)
+        let width = imageSize.width * scale
+        let height = imageSize.height * scale
+        imageRect = CGRect(
+            x: container.minX + (container.width - width) / 2,
+            y: container.minY + (container.height - height) / 2,
+            width: width,
+            height: height
+        )
+    }
+
+    func imagePoint(for viewPoint: CGPoint) -> CGPoint? {
+        guard imageRect.contains(viewPoint), scale > 0 else { return nil }
+        return CGPoint(
+            x: (viewPoint.x - imageRect.minX) / scale,
+            y: (viewPoint.y - imageRect.minY) / scale
+        )
+    }
+
+    func clampedImagePoint(for viewPoint: CGPoint) -> CGPoint {
+        guard scale > 0 else { return .zero }
+        let x = min(max(viewPoint.x, imageRect.minX), imageRect.maxX)
+        let y = min(max(viewPoint.y, imageRect.minY), imageRect.maxY)
+        return CGPoint(x: (x - imageRect.minX) / scale, y: (y - imageRect.minY) / scale)
+    }
+
+    func viewPoint(for imagePoint: CGPoint) -> CGPoint {
+        CGPoint(
+            x: imageRect.minX + imagePoint.x * scale,
+            y: imageRect.minY + imagePoint.y * scale
+        )
+    }
+
+    func viewSize(for imageSize: CGSize) -> CGSize {
+        CGSize(width: imageSize.width * scale, height: imageSize.height * scale)
+    }
+
+    func annotationToView(_ annotation: Annotation) -> Annotation {
+        var converted = annotation
+        converted.origin = viewPoint(for: annotation.origin)
+        converted.size = viewSize(for: annotation.size)
+        if let endPoint = annotation.endPoint {
+            converted.endPoint = viewPoint(for: endPoint)
+        }
+        converted.lineWidth = annotation.lineWidth * scale
+        converted.fontSize = annotation.fontSize * scale
+        return converted
     }
 }

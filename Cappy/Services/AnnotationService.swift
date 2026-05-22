@@ -115,7 +115,7 @@ final class AnnotationService: ObservableObject {
         case .text:
             guard let text = annotation.text else { return }
             let nsText = text as NSString
-            let font = NSFont.systemFont(ofSize: 24)
+            let font = NSFont.systemFont(ofSize: annotation.fontSize)
             let attrs: [NSAttributedString.Key: Any] = [
                 .font: font,
                 .foregroundColor: annotation.color.nsColor

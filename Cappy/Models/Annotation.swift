@@ -41,6 +41,7 @@ struct Annotation: Identifiable, Equatable {
     var endPoint: CGPoint?
     var color: AnnotationColor = .red
     var lineWidth: CGFloat = 3
+    var fontSize: CGFloat = 24
     var text: String?
     var zIndex: Int = 0
 
@@ -65,7 +66,7 @@ struct Annotation: Identifiable, Equatable {
             let my = min(origin.y, end.y)
             return CGRect(x: mx, y: my, width: abs(end.x - origin.x), height: abs(end.y - origin.y))
         case .text:
-            return CGRect(origin: origin, size: CGSize(width: 100, height: 30))
+            return CGRect(origin: origin, size: CGSize(width: 160, height: fontSize * 1.4))
         }
     }
 

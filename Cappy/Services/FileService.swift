@@ -60,6 +60,20 @@ enum FileService {
         }
     }
 
+    static func copyPNGToClipboard(image: CGImage) {
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+
+        let nsImage = ImageExtensions.nsImage(from: image)
+        if pasteboard.writeObjects([nsImage]) {
+            return
+        }
+
+        if let pngData = ImageExtensions.pngData(from: image) {
+            pasteboard.setData(pngData, forType: .png)
+        }
+    }
+
     private static func hasSufficientDiskSpace(_ url: URL) -> Bool {
         do {
             let values = try url.resourceValues(forKeys: [.volumeAvailableCapacityKey])

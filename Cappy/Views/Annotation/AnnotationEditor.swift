@@ -78,6 +78,9 @@ struct AnnotationEditor: View {
 
                 Divider().frame(height: 24).padding(.horizontal, 4)
 
+                iconButton("Copy", systemImage: "doc.on.doc", action: copyToClipboard)
+                    .keyboardShortcut("c", modifiers: [.command, .shift])
+
                 Button(action: save) {
                     Label("Save", systemImage: "checkmark.circle.fill")
                         .font(.system(size: 13, weight: .semibold))
@@ -152,6 +155,11 @@ struct AnnotationEditor: View {
             alert.informativeText = error.localizedDescription
             alert.runModal()
         }
+    }
+
+    private func copyToClipboard() {
+        guard let annotated = service.commitToImage(baseImage: image) else { return }
+        FileService.copyPNGToClipboard(image: annotated)
     }
 
     private func closeWindow() {

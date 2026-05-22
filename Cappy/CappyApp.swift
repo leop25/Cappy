@@ -41,6 +41,8 @@ final class AppState: ObservableObject {
     // MARK: - Capture Modes
 
     func startRegionCapture() {
+        guard ensureScreenCapturePermission() else { return }
+
         let screen = currentScreen
         dimOverlay = DimOverlay()
         dimOverlay?.showForRegion(
@@ -54,6 +56,8 @@ final class AppState: ObservableObject {
     }
 
     func startFullScreenCapture() {
+        guard ensureScreenCapturePermission() else { return }
+
         let screens = NSScreen.screens
         let capture = Capture(mode: .fullScreen, sourceRect: nil, sourceWindowID: nil)
 
@@ -84,6 +88,7 @@ final class AppState: ObservableObject {
                 if index == 0 {
                     lastCaptureURL = fileURL
                     lastCaptureImage = cgImage
+                    FileService.copyPNGToClipboard(image: cgImage)
                 }
             } catch {
                 print("[Cappy] Save failed (\(suffix)): \(error.localizedDescription)")
@@ -103,6 +108,8 @@ final class AppState: ObservableObject {
     }
 
     func startWindowCapture() {
+        guard ensureScreenCapturePermission() else { return }
+
         let screen = currentScreen
         dimOverlay = DimOverlay()
         dimOverlay?.showForWindow(on: screen) { _ in
@@ -148,6 +155,7 @@ final class AppState: ObservableObject {
             print("[Cappy] Saved: \(fileURL.path)")
             lastCaptureURL = fileURL
             lastCaptureImage = cgImage
+            FileService.copyPNGToClipboard(image: cgImage)
         } catch {
             print("[Cappy] Save failed: \(error.localizedDescription)")
             showSaveFailure(error)
@@ -168,12 +176,12 @@ final class AppState: ObservableObject {
     private var thumbnailWindow: NSWindow?
 
     private func showThumbnail(cgImage: CGImage) {
-        thumbnailWindow?.close()
+        dismissThumbnail()
 
         let thumbView = ThumbnailView(
             image: cgImage,
             onClick: { [weak self] in self?.openAnnotationEditor() },
-            onDismiss: { [weak self] in self?.thumbnailWindow?.close() }
+            onDismiss: { [weak self] in self?.dismissThumbnail() }
         )
         .frame(width: 240, height: 202)
 
@@ -191,6 +199,7 @@ final class AppState: ObservableObject {
         window.backgroundColor = .clear
         window.contentView = hostingView
         window.collectionBehavior = [.canJoinAllSpaces, .stationary]
+        window.isReleasedWhenClosed = false
 
         guard let screen = NSScreen.main else { return }
         let screenFrame = screen.visibleFrame
@@ -205,8 +214,9 @@ final class AppState: ObservableObject {
     }
 
     func dismissThumbnail() {
-        thumbnailWindow?.close()
+        let window = thumbnailWindow
         thumbnailWindow = nil
+        window?.close()
         thumbnailImage = nil
     }
 
@@ -235,6 +245,7 @@ final class AppState: ObservableObject {
         window.titleVisibility = .hidden
         window.toolbarStyle = .unified
         window.contentView = hostingView
+        window.isReleasedWhenClosed = false
         window.center()
         window.makeKeyAndOrderFront(nil)
 
@@ -332,6 +343,26 @@ final class AppState: ObservableObject {
             result = (result << 8) + OSType(scalar.value)
         }
         return result
+    }
+
+    private func ensureScreenCapturePermission() -> Bool {
+        guard !CGPreflightScreenCaptureAccess() else { return true }
+
+        if CGRequestScreenCaptureAccess() {
+            return true
+        }
+
+        let alert = NSAlert()
+        alert.messageText = "Screen Recording Access Required"
+        alert.informativeText = "macOS is blocking Cappy from reading window contents. Enable Screen Recording for Cappy, or for Codex/Terminal if that is what appears in System Settings, then reopen the app."
+        alert.addButton(withTitle: "Open System Settings")
+        alert.addButton(withTitle: "Later")
+        if alert.runModal() == .alertFirstButtonReturn {
+            if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture") {
+                NSWorkspace.shared.open(url)
+            }
+        }
+        return false
     }
 
     private func requestAccessibilityPermission() {
