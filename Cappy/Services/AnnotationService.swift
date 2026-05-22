@@ -72,25 +72,27 @@ final class AnnotationService: ObservableObject {
         context.draw(baseImage, in: CGRect(origin: .zero, size: imageSize))
 
         for annotation in annotations {
-            drawAnnotation(annotation, in: context)
+            drawAnnotation(annotation, in: context, imageHeight: imageSize.height)
         }
 
         return context.makeImage()
     }
 
-    private func drawAnnotation(_ annotation: Annotation, in context: CGContext) {
+    private func drawAnnotation(_ annotation: Annotation, in context: CGContext, imageHeight: CGFloat) {
         context.setStrokeColor(annotation.color.cgColor)
         context.setFillColor(annotation.color.cgColor)
         context.setLineWidth(annotation.lineWidth)
 
         switch annotation.type {
         case .arrow:
-            guard let end = annotation.endPoint else { return }
-            let angle = atan2(end.y - annotation.origin.y, end.x - annotation.origin.x)
+            guard let annotationEnd = annotation.endPoint else { return }
+            let origin = renderPoint(annotation.origin, imageHeight: imageHeight)
+            let end = renderPoint(annotationEnd, imageHeight: imageHeight)
+            let angle = atan2(end.y - origin.y, end.x - origin.x)
             let offset = annotation.lineWidth * 1.2
             let lineEnd = CGPoint(x: end.x - offset * cos(angle), y: end.y - offset * sin(angle))
 
-            context.move(to: annotation.origin)
+            context.move(to: origin)
             context.addLine(to: lineEnd)
             context.strokePath()
 
@@ -107,10 +109,10 @@ final class AnnotationService: ObservableObject {
             context.strokePath()
 
         case .rectangle:
-            context.stroke(CGRect(origin: annotation.origin, size: annotation.size))
+            context.stroke(renderRect(origin: annotation.origin, size: annotation.size, imageHeight: imageHeight))
 
         case .circle:
-            context.strokeEllipse(in: CGRect(origin: annotation.origin, size: annotation.size))
+            context.strokeEllipse(in: renderRect(origin: annotation.origin, size: annotation.size, imageHeight: imageHeight))
 
         case .text:
             guard let text = annotation.text else { return }
@@ -120,7 +122,24 @@ final class AnnotationService: ObservableObject {
                 .font: font,
                 .foregroundColor: annotation.color.nsColor
             ]
-            nsText.draw(at: annotation.origin, withAttributes: attrs)
+            let origin = CGPoint(
+                x: annotation.origin.x,
+                y: imageHeight - annotation.origin.y - annotation.fontSize
+            )
+            nsText.draw(at: origin, withAttributes: attrs)
         }
+    }
+
+    private func renderPoint(_ point: CGPoint, imageHeight: CGFloat) -> CGPoint {
+        CGPoint(x: point.x, y: imageHeight - point.y)
+    }
+
+    private func renderRect(origin: CGPoint, size: CGSize, imageHeight: CGFloat) -> CGRect {
+        CGRect(
+            x: origin.x,
+            y: imageHeight - origin.y - size.height,
+            width: size.width,
+            height: size.height
+        )
     }
 }
