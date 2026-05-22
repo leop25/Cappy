@@ -27,6 +27,7 @@ final class AppState: ObservableObject {
     private var hotKeyRefs: [EventHotKeyRef?] = []
     private var hotKeyEventHandler: EventHandlerRef?
     private var editorWindow: NSWindow?
+    private var hasRequestedScreenCapturePermission = false
 
     init() {
         registerGlobalShortcuts()
@@ -41,7 +42,7 @@ final class AppState: ObservableObject {
     // MARK: - Capture Modes
 
     func startRegionCapture() {
-        guard ensureScreenCapturePermission() else { return }
+        requestScreenCapturePermissionIfNeeded()
 
         let screen = currentScreen
         dimOverlay = DimOverlay()
@@ -56,7 +57,7 @@ final class AppState: ObservableObject {
     }
 
     func startFullScreenCapture() {
-        guard ensureScreenCapturePermission() else { return }
+        requestScreenCapturePermissionIfNeeded()
 
         let screens = NSScreen.screens
         let capture = Capture(mode: .fullScreen, sourceRect: nil, sourceWindowID: nil)
@@ -108,7 +109,7 @@ final class AppState: ObservableObject {
     }
 
     func startWindowCapture() {
-        guard ensureScreenCapturePermission() else { return }
+        requestScreenCapturePermissionIfNeeded()
 
         let screen = currentScreen
         dimOverlay = DimOverlay()
@@ -345,24 +346,12 @@ final class AppState: ObservableObject {
         return result
     }
 
-    private func ensureScreenCapturePermission() -> Bool {
-        guard !CGPreflightScreenCaptureAccess() else { return true }
+    private func requestScreenCapturePermissionIfNeeded() {
+        guard !hasRequestedScreenCapturePermission,
+              !CGPreflightScreenCaptureAccess() else { return }
 
-        if CGRequestScreenCaptureAccess() {
-            return true
-        }
-
-        let alert = NSAlert()
-        alert.messageText = "Screen Recording Access Required"
-        alert.informativeText = "macOS is blocking Cappy from reading window contents. Enable Screen Recording for Cappy, or for Codex/Terminal if that is what appears in System Settings, then reopen the app."
-        alert.addButton(withTitle: "Open System Settings")
-        alert.addButton(withTitle: "Later")
-        if alert.runModal() == .alertFirstButtonReturn {
-            if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture") {
-                NSWorkspace.shared.open(url)
-            }
-        }
-        return false
+        hasRequestedScreenCapturePermission = true
+        _ = CGRequestScreenCaptureAccess()
     }
 
     private func requestAccessibilityPermission() {
